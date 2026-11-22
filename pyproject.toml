@@ -1,0 +1,42 @@
+[project]
+name = "incubrix-broll-engine"
+version = "0.1.0"
+description = "Script / voiceover to licence-clean B-roll video engine (IncuBrix Assessment 3)"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "pydantic>=2.8",
+    "pydantic-settings>=2.4",
+    "python-multipart>=0.0.9",
+    "sqlalchemy>=2.0",
+    "psycopg[binary]>=3.2",
+    "celery>=5.4",
+    "redis>=5.0",
+    "boto3>=1.34",
+    "httpx>=0.27",
+    "pyyaml>=6.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+]
+# Real (non-mock) providers. Installed in the Docker image; not needed for the no-key test path.
+ml = [
+    "google-genai>=1.0",
+    "faster-whisper>=1.1",
+    "fastembed>=0.5",
+    "opencv-python-headless>=4.10",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+markers = [
+    "e2e: end-to-end tests that render real media with ffmpeg",
+    "live: opt-in tests that call real external providers (need API keys)",
+]
+
+[tool.uv]
+package = false
