@@ -1,0 +1,14 @@
+{
+  "name": "h03_sad_news",
+  "request": {
+    "script": "Heavy floods hit three villages overnight, and twelve people died. Rescue teams are helping families who lost their homes. The community will hold a memorial on Sunday to mourn the victims.",
+    "aspect_ratios": [
+      "16:9",
+      "9:16"
+    ],
+    "captions": {
+      "burn_in": true,
+      "srt": true
+    }
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "name": "07_statistics_business",
+  "description": "Abstract lines and statistics",
+  "request": {
+    "script": "Trust is earned slowly. Sales grew forty percent in 2025, driven by small shops that moved online. Three out of four customers now pay with their phones. Growth like this does not happen by luck. It comes from teams that listen, plan, and keep improving every single week.",
+    "voice": "en-IN-female",
+    "aspect_ratios": [
+      "16:9",
+      "9:16"
+    ],
+    "style": "bright, modern, real-world footage",
+    "avoid": [],
+    "captions": {
+      "burn_in": true,
+      "srt": true
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "h05_empty_script",
+  "request": {
+    "script": "   ",
+    "aspect_ratios": [
+      "16:9",
+      "9:16"
+    ],
+    "captions": {
+      "burn_in": true,
+      "srt": true
+    }
+  }
+}

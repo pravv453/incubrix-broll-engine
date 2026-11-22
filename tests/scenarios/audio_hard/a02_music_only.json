@@ -1,0 +1,10 @@
+{
+  "name": "a02_music_only",
+  "description": "Music only, no speech",
+  "audio_file": "music_only.wav",
+  "options": {
+    "aspect_ratios": [
+      "16:9"
+    ]
+  }
+}

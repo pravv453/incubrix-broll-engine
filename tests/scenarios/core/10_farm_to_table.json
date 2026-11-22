@@ -1,0 +1,17 @@
+{
+  "name": "10_farm_to_table",
+  "description": "Short promo, about 20 seconds",
+  "request": {
+    "script": "From the farm field to your kitchen table in one day. Fresh vegetables, picked this morning and delivered by noon.",
+    "voice": "en-IN-female",
+    "aspect_ratios": [
+      "9:16"
+    ],
+    "style": "bright, modern, real-world footage",
+    "avoid": [],
+    "captions": {
+      "burn_in": true,
+      "srt": true
+    }
+  }
+}

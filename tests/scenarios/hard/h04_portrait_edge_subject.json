@@ -1,0 +1,13 @@
+{
+  "name": "h04_portrait_edge_subject",
+  "request": {
+    "script": "A delivery van drives past the edge of the frame. A single runner trains on an empty track at dawn.",
+    "aspect_ratios": [
+      "9:16"
+    ],
+    "captions": {
+      "burn_in": true,
+      "srt": true
+    }
+  }
+}

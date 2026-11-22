@@ -1,0 +1,10 @@
+{
+  "name": "a01_silent",
+  "description": "Silent audio",
+  "audio_file": "silent.wav",
+  "options": {
+    "aspect_ratios": [
+      "16:9"
+    ]
+  }
+}

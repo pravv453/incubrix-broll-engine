@@ -1,0 +1,10 @@
+{
+  "name": "a04_over_10_min",
+  "description": "Audio longer than 10 minutes",
+  "audio_file": "over_10min.mp3",
+  "options": {
+    "aspect_ratios": [
+      "16:9"
+    ]
+  }
+}

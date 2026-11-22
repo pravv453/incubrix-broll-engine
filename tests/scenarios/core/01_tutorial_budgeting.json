@@ -1,0 +1,19 @@
+{
+  "name": "01_tutorial_budgeting",
+  "description": "Tutorial: personal budgeting",
+  "request": {
+    "script": "Here is a simple way to build a monthly budget. First, write down your take-home pay. Next, list your fixed costs like rent, electricity and your phone bill. Then track what you spend on food and transport for one week. Put a fixed amount into savings on payday, before you spend anything else. Review your notes every Sunday evening and adjust. In three months you will know exactly where your money goes.",
+    "voice": "en-IN-female",
+    "aspect_ratios": [
+      "16:9",
+      "9:16",
+      "1:1"
+    ],
+    "style": "bright, modern, real-world footage",
+    "avoid": [],
+    "captions": {
+      "burn_in": true,
+      "srt": true
+    }
+  }
+}

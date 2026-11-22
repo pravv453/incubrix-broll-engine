@@ -1,0 +1,19 @@
+{
+  "name": "03_product_promo_app",
+  "description": "Product promo: meal-planning app",
+  "request": {
+    "script": "Meet PlanPlate, the app that plans your meals for the week. Tell it what you like, and it builds a shopping list in seconds. Cook fresh vegetables, save money, and waste less food. Your family gets healthy dinners without the daily stress. Download it today and get your evenings back.",
+    "voice": "en-IN-female",
+    "aspect_ratios": [
+      "9:16"
+    ],
+    "style": "bright, modern, real-world footage",
+    "avoid": [
+      "alcohol"
+    ],
+    "captions": {
+      "burn_in": true,
+      "srt": true
+    }
+  }
+}

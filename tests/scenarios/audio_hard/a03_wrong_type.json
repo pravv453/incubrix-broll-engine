@@ -1,0 +1,10 @@
+{
+  "name": "a03_wrong_type",
+  "description": "Wrong file type",
+  "audio_file": "notes.txt",
+  "options": {
+    "aspect_ratios": [
+      "16:9"
+    ]
+  }
+}

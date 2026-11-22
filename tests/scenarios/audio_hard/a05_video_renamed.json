@@ -1,0 +1,10 @@
+{
+  "name": "a05_video_renamed",
+  "description": "A video file renamed to .mp3",
+  "audio_file": "clip.mp3",
+  "options": {
+    "aspect_ratios": [
+      "16:9"
+    ]
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "h01_named_person_brand",
+  "request": {
+    "script": "Sundar Pichai said Google will invest in new data centers in India. Analysts expect Tesla and Tata to compete in electric cars next year.",
+    "aspect_ratios": [
+      "16:9",
+      "9:16"
+    ],
+    "captions": {
+      "burn_in": true,
+      "srt": true
+    }
+  }
+}

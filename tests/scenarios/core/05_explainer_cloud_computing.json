@@ -1,0 +1,18 @@
+{
+  "name": "05_explainer_cloud_computing",
+  "description": "Explainer with double meanings: cloud, python, mouse",
+  "request": {
+    "script": "Cloud computing means your files and programs live on servers in large data centers, not on your own laptop. A small team can rent that computing power by the hour. Developers often write Python scripts to automate the boring parts of their work. With a few clicks of a mouse, a new server can be running in minutes. This flexibility has changed how startups grow.",
+    "voice": "en-IN-female",
+    "aspect_ratios": [
+      "16:9",
+      "9:16"
+    ],
+    "style": "bright, modern, real-world footage",
+    "avoid": [],
+    "captions": {
+      "burn_in": true,
+      "srt": true
+    }
+  }
+}

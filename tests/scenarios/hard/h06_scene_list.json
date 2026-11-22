@@ -1,0 +1,27 @@
+{
+  "name": "h06_scene_list",
+  "request": {
+    "scenes": [
+      {
+        "text": "Our app keeps your whole week organised.",
+        "visual_hint": "phone screen calendar app"
+      },
+      {
+        "text": "Teams plan projects together in minutes.",
+        "visual_hint": "team meeting with laptops"
+      },
+      {
+        "text": "And you finally get your evenings back.",
+        "visual_hint": "family dinner at home"
+      }
+    ],
+    "aspect_ratios": [
+      "9:16",
+      "1:1"
+    ],
+    "captions": {
+      "burn_in": true,
+      "srt": true
+    }
+  }
+}

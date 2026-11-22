@@ -1,0 +1,18 @@
+{
+  "name": "04_story_seedling",
+  "description": "Story: the patient gardener",
+  "request": {
+    "script": "Every morning, an old gardener walked to the edge of the village with a small watering can. He had planted a single seed in a quiet corner of the field. For weeks nothing happened, and the neighbours laughed. But he kept watering the soil, day after day. One spring morning, a tiny green shoot pushed through the earth. Years later, children played in the shade of a tall tree. Patience, he said, is how great things grow.",
+    "voice": "en-IN-female",
+    "aspect_ratios": [
+      "16:9",
+      "9:16"
+    ],
+    "style": "bright, modern, real-world footage",
+    "avoid": [],
+    "captions": {
+      "burn_in": true,
+      "srt": true
+    }
+  }
+}

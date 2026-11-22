@@ -1,0 +1,19 @@
+{
+  "name": "06_saving_money_60s",
+  "description": "Saving money, about 60 seconds (brief's own example)",
+  "request": {
+    "script": "Saving money is not about earning more. It is about small habits that you repeat every day. Start by keeping coins in a glass jar on your desk. Cook at home a few nights a week instead of ordering food. Before you buy something, wait one day and ask if you really need it. Compare prices at different shops, and use a shopping list. Put a fixed amount into a savings account the moment your salary arrives. Watch the balance grow slowly, month after month. Value is not only money; it is the security and freedom that savings give your family. Trust the process, because wealth is earned slowly.",
+    "voice": "en-IN-female",
+    "aspect_ratios": [
+      "16:9",
+      "9:16",
+      "1:1"
+    ],
+    "style": "bright, modern, real-world footage",
+    "avoid": [],
+    "captions": {
+      "burn_in": true,
+      "srt": true
+    }
+  }
+}

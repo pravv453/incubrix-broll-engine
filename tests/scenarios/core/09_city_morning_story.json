@@ -1,0 +1,20 @@
+{
+  "name": "09_city_morning_story",
+  "description": "Story: a city wakes up (visual, travel style)",
+  "request": {
+    "script": "Before sunrise, the city is quiet. Delivery vans move through empty streets. The first trains roll across the bridge. Cafes switch on their lights and the smell of coffee fills the air. By eight o'clock, the roads are full of traffic and the skyline glows in the morning sun.",
+    "voice": "en-IN-female",
+    "aspect_ratios": [
+      "16:9",
+      "1:1"
+    ],
+    "style": "bright, modern, real-world footage",
+    "avoid": [
+      "people's faces"
+    ],
+    "captions": {
+      "burn_in": true,
+      "srt": true
+    }
+  }
+}

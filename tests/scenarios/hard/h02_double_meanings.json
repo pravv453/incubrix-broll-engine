@@ -1,0 +1,14 @@
+{
+  "name": "h02_double_meanings",
+  "request": {
+    "script": "We walked along the river bank at sunset. Later, I opened a savings account at the bank. Honesty is a value our parents taught us. The value of the shares doubled in a year. A python was found coiled in the garden.",
+    "aspect_ratios": [
+      "16:9",
+      "9:16"
+    ],
+    "captions": {
+      "burn_in": true,
+      "srt": true
+    }
+  }
+}
