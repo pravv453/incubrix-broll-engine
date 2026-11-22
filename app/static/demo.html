@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>B-roll Engine Demo</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --ink:#14181f; --mute:#5b6472; --line:#e3e6eb; --acc:#0f766e; --warn:#b45309; --bad:#b91c1c; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#0f1216; --card:#171b21; --ink:#e8ebf0; --mute:#9aa3b2; --line:#2a303a; --acc:#2dd4bf; --warn:#f59e0b; --bad:#f87171; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 system-ui, -apple-system, Segoe UI, sans-serif; }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 22px; margin: 0 0 4px; } .sub { color: var(--mute); margin: 0 0 20px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+  label { display:block; font-weight:600; margin: 10px 0 4px; font-size: 13px; }
+  textarea, input[type=text], input[type=password], select { width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:var(--bg); color:var(--ink); font: inherit; }
+  textarea { min-height: 110px; }
+  .row { display:flex; gap:12px; flex-wrap: wrap; } .row > * { flex: 1 1 200px; }
+  .tabs button { background:none; border:1px solid var(--line); color:var(--ink); padding:6px 12px; border-radius:8px; cursor:pointer; margin-right:6px; }
+  .tabs button.on { border-color: var(--acc); color: var(--acc); font-weight:600; }
+  button.go { margin-top: 14px; background: var(--acc); color: #fff; border: 0; padding: 10px 18px; border-radius: 8px; font-weight: 600; cursor: pointer; }
+  .bar { height: 10px; background: var(--line); border-radius: 99px; overflow: hidden; } .bar > div { height: 100%; background: var(--acc); width: 0; transition: width .4s; }
+  .mute { color: var(--mute); font-size: 13px; } .err { color: var(--bad); } .warn { color: var(--warn); }
+  video { width: 100%; max-height: 520px; background: #000; border-radius: 8px; }
+  .vids { display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+  table { width:100%; border-collapse: collapse; font-size: 13px; } th, td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); vertical-align: top; }
+  .pill { display:inline-block; padding: 1px 8px; border-radius: 99px; border:1px solid var(--line); font-size: 12px; margin: 1px 2px 1px 0; }
+  .ai { border-color: var(--warn); color: var(--warn); }
+  pre { white-space: pre-wrap; word-break: break-word; font-size: 12px; background: var(--bg); padding: 8px; border-radius: 8px; max-height: 240px; overflow: auto; }
+  .scroll { overflow-x: auto; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Script &amp; Voiceover → B-roll</h1>
+  <p class="sub">Submits to <code>POST /api/v1/broll/jobs</code>, polls <code>GET /api/v1/jobs/{id}</code>. API docs: <a href="/docs">/docs</a>.</p>
+
+  <div class="card">
+    <div class="tabs" id="tabs">
+      <button data-k="script" class="on">Script</button><button data-k="audio">Upload audio</button><button data-k="url">Audio URL</button><button data-k="scenes">Scene list</button>
+    </div>
+    <div id="in-script"><label>Script (narration is generated)</label><textarea id="script">Cloud computing lets a small team rent servers by the hour. Sales grew 40% in 2025. Trust is earned slowly, one customer at a time.</textarea></div>
+    <div id="in-audio" hidden><label>Voiceover (MP3, WAV, M4A, up to 10 minutes)</label><input type="file" id="file" accept=".mp3,.wav,.m4a,audio/*"></div>
+    <div id="in-url" hidden><label>Public audio URL</label><input type="text" id="url" placeholder="https://.../voiceover.mp3"></div>
+    <div id="in-scenes" hidden><label>Scene list JSON: [{"text": "...", "visual_hint": "..."}]</label><textarea id="scenes">[{"text": "Our app keeps your week organised.", "visual_hint": "phone calendar app"}, {"text": "Teams plan projects together.", "visual_hint": "team meeting laptops"}]</textarea></div>
+    <div class="row">
+      <div><label>Aspect ratios</label>
+        <span><input type="checkbox" class="ar" value="16:9" checked> 16:9</span>
+        <span><input type="checkbox" class="ar" value="9:16" checked> 9:16</span>
+        <span><input type="checkbox" class="ar" value="1:1"> 1:1</span></div>
+      <div><label>Voice (text input)</label><input type="text" id="voice" value="en-IN-female"></div>
+      <div><label>Language (optional: en, hi, ta)</label><input type="text" id="lang" value=""></div>
+    </div>
+    <div class="row">
+      <div><label>Style</label><input type="text" id="style" value="bright, modern, real-world footage"></div>
+      <div><label>Avoid (comma-separated)</label><input type="text" id="avoid" value="people's faces, alcohol"></div>
+      <div><label>Access token (if the demo is protected)</label><input type="password" id="token"></div>
+    </div>
+    <label><input type="checkbox" id="burn" checked> Burn captions in</label>
+    <button class="go" id="go">Create video</button>
+  </div>
+
+  <div class="card" id="status" hidden>
+    <div class="row"><div><b id="jid"></b> <span class="mute" id="stage"></span></div><div style="text-align:right" id="pct"></div></div>
+    <div class="bar"><div id="bar"></div></div>
+    <div id="msgs" class="mute"></div>
+  </div>
+
+  <div class="card" id="results" hidden>
+    <div class="vids" id="vids"></div>
+    <p class="mute" id="links"></p>
+    <div class="scroll"><table id="scenes-table"></table></div>
+  </div>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+let kind = "script";
+document.querySelectorAll("#tabs button").forEach(b => b.onclick = () => {
+  kind = b.dataset.k;
+  document.querySelectorAll("#tabs button").forEach(x => x.classList.toggle("on", x === b));
+  ["script","audio","url","scenes"].forEach(k => $("in-" + k).hidden = k !== kind);
+});
+const hdrs = (extra = {}) => { const t = $("token").value.trim(); return t ? { ...extra, Authorization: "Bearer " + t } : extra; };
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
+
+$("go").onclick = async () => {
+  const opts = {
+    aspect_ratios: [...document.querySelectorAll(".ar:checked")].map(x => x.value),
+    voice: $("voice").value, style: $("style").value,
+    avoid: $("avoid").value.split(",").map(s => s.trim()).filter(Boolean),
+    captions: { burn_in: $("burn").checked, srt: true },
+  };
+  if ($("lang").value.trim()) opts.language = $("lang").value.trim();
+  const key = "demo-" + crypto.randomUUID();
+  let res;
+  try {
+    if (kind === "audio") {
+      const fd = new FormData(); fd.append("audio_file", $("file").files[0]); fd.append("options", JSON.stringify(opts));
+      res = await fetch("/api/v1/broll/jobs", { method: "POST", headers: hdrs({ "Idempotency-Key": key }), body: fd });
+    } else {
+      const body = { ...opts };
+      if (kind === "script") body.script = $("script").value;
+      if (kind === "url") body.audio_url = $("url").value;
+      if (kind === "scenes") body.scenes = JSON.parse($("scenes").value);
+      res = await fetch("/api/v1/broll/jobs", { method: "POST", headers: hdrs({ "Idempotency-Key": key, "Content-Type": "application/json" }), body: JSON.stringify(body) });
+    }
+  } catch (e) { alert("Request failed: " + e); return; }
+  const data = await res.json();
+  $("status").hidden = false; $("results").hidden = true;
+  if (res.status !== 202) { $("msgs").innerHTML = `<span class="err">${esc(data.error.code)}: ${esc(data.error.message)}</span><pre>${esc(JSON.stringify(data.error.details, null, 2))}</pre>`; return; }
+  poll(data.job_id);
+};
+
+async function poll(id) {
+  $("jid").textContent = id;
+  const r = await fetch("/api/v1/jobs/" + id, { headers: hdrs() });
+  const j = await r.json();
+  $("stage").textContent = `${j.status} · ${j.stage}`;
+  $("pct").textContent = j.progress + "%";
+  $("bar").style.width = j.progress + "%";
+  $("msgs").innerHTML = (j.warnings || []).map(w => `<div class="warn">⚠ ${esc(w.code)}: ${esc(w.message)}</div>`).join("");
+  if (j.status === "failed" || j.status === "cancelled") { $("msgs").innerHTML += `<div class="err">${esc(j.error?.code)}: ${esc(j.error?.message)}</div><pre>${esc(JSON.stringify(j.error?.details, null, 2))}</pre>`; return; }
+  if (j.status !== "succeeded") return setTimeout(() => poll(id), 1500);
+  showResult(j);
+}
+
+async function showResult(j) {
+  $("results").hidden = false;
+  $("vids").innerHTML = Object.entries(j.result.videos).map(([r, u]) => `<div><b>${r}</b><video controls src="${u}"></video></div>`).join("");
+  $("links").innerHTML = ["captions_srt","timeline_json","manifest_json"].filter(k => j.result[k]).map(k => `<a href="${j.result[k]}" target="_blank">${k}</a>`).join(" · ");
+  const tl = await (await fetch(j.timeline_url, { headers: hdrs() })).json();
+  $("scenes-table").innerHTML = "<tr><th>Scene</th><th>Narration</th><th>Visual brief</th><th>Clip</th><th>Score</th><th>Why</th></tr>" +
+    tl.scenes.map(s => `<tr><td>${s.scene_id}<br><span class="mute">${s.start_s}–${s.end_s}s</span></td>
+      <td>${esc(s.text)}</td><td>${esc(s.visual_brief.visual_concept)}<br>${(s.warnings||[]).map(w => `<span class="pill">${esc(w.code)}</span>`).join("")}</td>
+      <td><span class="pill ${s.clip.is_ai_generated ? "ai" : ""}">${s.clip.is_ai_generated ? "AI-generated" : esc(s.clip.provider)}</span>
+          <a href="${esc(s.clip.source_url)}" target="_blank">${esc(s.clip.asset_id)}</a><br><span class="mute">${esc(s.clip.licence.name)}</span></td>
+      <td>${s.selection.score.toFixed(2)}${s.independent_judge ? `<br><span class="mute">judge ${s.independent_judge.score_1_5}/5</span>` : ""}</td>
+      <td class="mute">${esc(s.selection.rule)}</td></tr>`).join("");
+}
+</script>
+</body>
+</html>
