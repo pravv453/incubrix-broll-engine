@@ -1,0 +1,121 @@
+# docker compose up --build             -> API on :8000 (+ demo page), worker, Postgres, Redis, S3 object store (:9000)
+# docker compose run --rm tests         -> full test suite (unit + integration + e2e), no API keys
+#
+# Settings come from .env (copy .env.example). Without a .env everything runs keyless:
+# local models for ASR / embeddings / CLIP / faces; mock TTS, planner rules, mock stock, mock generator.
+
+x-app: &app
+  build:
+    context: .
+    args:
+      GIT_SHA: ${GIT_SHA:-unknown}
+  image: incubrix-broll-engine:latest
+  env_file:
+    - path: .env
+      required: false
+  environment: &app-env
+    DATABASE_URL: postgresql+psycopg://app:app@postgres:5432/broll
+    REDIS_URL: redis://redis:6379/0
+    JOB_RUNNER: celery
+    STORAGE_BACKEND: s3
+    S3_ENDPOINT: http://objectstore:9000
+    S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-http://localhost:9000}
+    S3_ACCESS_KEY: ${S3_ACCESS_KEY:-broll}
+    S3_SECRET_KEY: ${S3_SECRET_KEY:-change-me-s3-secret}
+    S3_BUCKET: ${S3_BUCKET:-broll}
+    ASR_PROVIDER: ${ASR_PROVIDER:-faster_whisper}
+    EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-fastembed}
+    VISION_PROVIDER: ${VISION_PROVIDER:-clip}
+    FACE_DETECTOR: ${FACE_DETECTOR:-yunet}
+    FAULT_INJECTION_FILE: /shared/faults.json
+  volumes:
+    - models:/models
+    - shared:/shared
+  depends_on:
+    postgres: {condition: service_healthy}
+    redis: {condition: service_healthy}
+    objectstore: {condition: service_healthy}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: broll
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d broll"]
+      interval: 3s
+      retries: 30
+
+  redis:
+    image: redis:7.2-alpine  # 7.2 is the last BSD-3 release (7.4+ is RSAL/SSPL)
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      retries: 30
+
+  # S3-compatible object store: Versity S3 Gateway (Apache-2.0) with a POSIX backend.
+  # (MinIO no longer publishes free container images; any S3 works via the S3_* settings.)
+  objectstore:
+    image: versity/versitygw:v1.11.0
+    command: ["--port", ":9000", "posix", "/data"]
+    environment:
+      ROOT_ACCESS_KEY: ${S3_ACCESS_KEY:-broll}
+      ROOT_SECRET_KEY: ${S3_SECRET_KEY:-change-me-s3-secret}
+    ports: ["9000:9000"]
+    volumes: [objdata:/data]
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "9000"]
+      interval: 3s
+      retries: 30
+
+  # shared volume is writable by the app user (uid 10001) for runtime fault injection
+  shared-init:
+    image: busybox:1.36
+    command: ["sh", "-c", "chown -R 10001 /shared /models"]
+    volumes: [shared:/shared, models:/models]
+
+  api:
+    <<: *app
+    ports: ["8000:8000"]
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      objectstore: {condition: service_healthy}
+      shared-init: {condition: service_completed_successfully}
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:8000/health"]
+      interval: 5s
+      retries: 30
+
+  worker:
+    <<: *app
+    command: ["celery", "-A", "app.workers.celery_app", "worker", "--loglevel=INFO", "-n", "worker@%h"]
+    depends_on:
+      api: {condition: service_healthy}
+
+  # One command, no API keys:  docker compose run --rm tests
+  tests:
+    <<: *app
+    profiles: ["test"]
+    depends_on: {}
+    environment:
+      <<: *app-env
+      DATABASE_URL: sqlite:////tmp/broll-test.db
+      JOB_RUNNER: inline
+      STORAGE_BACKEND: local
+      ASR_PROVIDER: mock
+      EMBEDDING_PROVIDER: mock
+      VISION_PROVIDER: mock
+      FACE_DETECTOR: mock
+      GEMINI_API_KEY: ""
+      PIXABAY_API_KEY: ""
+    command: ["pytest", "-p", "no:cacheprovider"]
+
+volumes:
+  pgdata:
+  objdata:
+  models:
+  shared:
