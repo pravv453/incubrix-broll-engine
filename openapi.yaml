@@ -1,0 +1,819 @@
+openapi: 3.1.0
+info:
+  title: IncuBrix B-roll Engine
+  description: 'Turns a voiceover or script into licence-clean B-roll videos, scene by scene, with narration-timed captions,
+    timeline.json and manifest.json. Long work runs as background jobs. All errors use `{"error": {"code", "message", "retryable",
+    "details"}}`.'
+  version: 0.1.0
+paths:
+  /health:
+    get:
+      tags:
+      - health
+      summary: Liveness probe
+      operationId: health_health_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+                title: Response Health Health Get
+  /ready:
+    get:
+      tags:
+      - health
+      summary: Readiness probe (DB, queue, storage)
+      operationId: ready_ready_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /api/v1/broll/jobs:
+    post:
+      tags:
+      - broll
+      summary: Create a B-roll job from audio (upload or URL), a script, or an IncuBrix scene list
+      operationId: create_broll_job_api_v1_broll_jobs_post
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Required. Same key + same body returns the same job.
+          title: Idempotency-Key
+        description: Required. Same key + same body returns the same job.
+      - name: X-Correlation-Id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Correlation-Id
+      responses:
+        '202':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobCreated'
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Bad Request
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Conflict
+        '413':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Request Entity Too Large
+        '415':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unsupported Media Type
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unprocessable Entity
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Service Unavailable
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BrollJobRequest'
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+              - audio_file
+              properties:
+                audio_file:
+                  type: string
+                  format: binary
+                  description: MP3, WAV or M4A, up to 10 minutes
+                options:
+                  type: string
+                  description: JSON-encoded BrollJobOptions (everything except audio_url/script/scenes)
+  /api/v1/jobs/{job_id}:
+    get:
+      tags:
+      - jobs
+      summary: Job status, progress and result links
+      operationId: get_job_api_v1_jobs__job_id__get
+      parameters:
+      - name: job_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Job Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobStatus'
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Not Found
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/jobs/{job_id}/cancel:
+    post:
+      tags:
+      - jobs
+      summary: Cancel a queued or running job (stops at the next checkpoint)
+      operationId: cancel_job_api_v1_jobs__job_id__cancel_post
+      parameters:
+      - name: job_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Job Id
+      - name: Idempotency-Key
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Idempotency-Key
+      responses:
+        '202':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobStatus'
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Not Found
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Bad Request
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Conflict
+        '413':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Request Entity Too Large
+        '415':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unsupported Media Type
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unprocessable Entity
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Service Unavailable
+  /api/v1/jobs/{job_id}/timeline:
+    get:
+      tags:
+      - jobs
+      summary: The job's timeline.json
+      operationId: get_timeline_api_v1_jobs__job_id__timeline_get
+      parameters:
+      - name: job_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Job Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Not Found
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Conflict
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/jobs/{job_id}/scenes/{scene_id}/clip:
+    post:
+      tags:
+      - jobs
+      summary: Replace one scene's clip; only that scene's segments are re-rendered (new job)
+      operationId: swap_clip_api_v1_jobs__job_id__scenes__scene_id__clip_post
+      parameters:
+      - name: job_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Job Id
+      - name: scene_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Scene Id
+      - name: Idempotency-Key
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Idempotency-Key
+      - name: X-Correlation-Id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Correlation-Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SwapClipRequest'
+      responses:
+        '202':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobCreated'
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Not Found
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Bad Request
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Conflict
+        '413':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Request Entity Too Large
+        '415':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unsupported Media Type
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unprocessable Entity
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Service Unavailable
+  /api/v1/files/{key}:
+    get:
+      tags:
+      - jobs
+      summary: Download an output (only with STORAGE_BACKEND=local; S3 mode returns presigned links instead)
+      operationId: get_file_api_v1_files__key__get
+      parameters:
+      - name: key
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Key
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Not Found
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+components:
+  schemas:
+    ErrorBody:
+      properties:
+        code:
+          type: string
+          title: Code
+        message:
+          type: string
+          title: Message
+        retryable:
+          type: boolean
+          title: Retryable
+        details:
+          additionalProperties: true
+          type: object
+          title: Details
+      type: object
+      required:
+      - code
+      - message
+      - retryable
+      title: ErrorBody
+    ErrorEnvelope:
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorBody'
+      type: object
+      required:
+      - error
+      title: ErrorEnvelope
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    JobCreated:
+      properties:
+        job_id:
+          type: string
+          title: Job Id
+        status:
+          type: string
+          enum:
+          - queued
+          - running
+          - succeeded
+          - failed
+          - cancelled
+          title: Status
+        progress:
+          type: integer
+          title: Progress
+        status_url:
+          type: string
+          title: Status Url
+        created_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Created At
+      type: object
+      required:
+      - job_id
+      - status
+      - progress
+      - status_url
+      title: JobCreated
+    JobStatus:
+      properties:
+        job_id:
+          type: string
+          title: Job Id
+        kind:
+          type: string
+          title: Kind
+        parent_job_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Parent Job Id
+        status:
+          type: string
+          enum:
+          - queued
+          - running
+          - succeeded
+          - failed
+          - cancelled
+          title: Status
+        stage:
+          type: string
+          title: Stage
+        progress:
+          type: integer
+          maximum: 100.0
+          minimum: 0.0
+          title: Progress
+        created_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Created At
+        updated_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Updated At
+        started_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Started At
+        finished_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Finished At
+        warnings:
+          items:
+            additionalProperties: true
+            type: object
+          type: array
+          title: Warnings
+        error:
+          anyOf:
+          - $ref: '#/components/schemas/ErrorBody'
+          - type: 'null'
+        result:
+          anyOf:
+          - $ref: '#/components/schemas/ResultLinks'
+          - type: 'null'
+        timeline_url:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Timeline Url
+      type: object
+      required:
+      - job_id
+      - kind
+      - status
+      - stage
+      - progress
+      title: JobStatus
+    ResultLinks:
+      properties:
+        videos:
+          additionalProperties:
+            type: string
+          type: object
+          title: Videos
+          description: aspect ratio -> download link
+        captions_srt:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Captions Srt
+        timeline_json:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Timeline Json
+        manifest_json:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Manifest Json
+      type: object
+      title: ResultLinks
+    SwapClipRequest:
+      properties:
+        provider:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Provider
+          description: Required with asset_id, e.g. 'pixabay' or 'mock'
+        asset_id:
+          anyOf:
+          - type: string
+            maxLength: 64
+          - type: 'null'
+          title: Asset Id
+        candidate_rank:
+          anyOf:
+          - type: integer
+            maximum: 10.0
+            minimum: 1.0
+          - type: 'null'
+          title: Candidate Rank
+          description: Rank in the stored candidate list
+        query:
+          anyOf:
+          - type: string
+            maxLength: 100
+            minLength: 2
+          - type: 'null'
+          title: Query
+          description: New search brief for this scene
+        reason:
+          anyOf:
+          - type: string
+            maxLength: 300
+          - type: 'null'
+          title: Reason
+      additionalProperties: false
+      type: object
+      title: SwapClipRequest
+      description: 'Replace one scene''s clip. Give at most one of asset_id, candidate_rank or query;
+
+        with none, the next-best eligible clip is chosen automatically.'
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+        input:
+          title: Input
+        ctx:
+          type: object
+          title: Context
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+    CaptionOptions:
+      additionalProperties: false
+      properties:
+        burn_in:
+          default: true
+          title: Burn In
+          type: boolean
+        srt:
+          default: true
+          title: Srt
+          type: boolean
+      title: CaptionOptions
+      type: object
+    InputScene:
+      additionalProperties: false
+      description: One entry of an IncuBrix scene list.
+      properties:
+        text:
+          maxLength: 2000
+          minLength: 1
+          title: Text
+          type: string
+        visual_hint:
+          anyOf:
+          - maxLength: 500
+            type: string
+          - type: 'null'
+          default: null
+          title: Visual Hint
+      required:
+      - text
+      title: InputScene
+      type: object
+    BrollJobRequest:
+      additionalProperties: false
+      description: 'JSON body: exactly one of audio_url / script / scenes.'
+      properties:
+        voice:
+          default: en-IN-female
+          maxLength: 64
+          title: Voice
+          type: string
+        language:
+          anyOf:
+          - maxLength: 16
+            type: string
+          - type: 'null'
+          default: null
+          description: BCP-47 hint, e.g. en, hi, ta. Auto-detected when null.
+          title: Language
+        aspect_ratios:
+          items:
+            type: string
+          maxItems: 3
+          minItems: 1
+          title: Aspect Ratios
+          type: array
+        style:
+          default: bright, modern, real-world footage
+          maxLength: 300
+          title: Style
+          type: string
+        avoid:
+          items:
+            type: string
+          maxItems: 20
+          title: Avoid
+          type: array
+        captions:
+          $ref: '#/components/schemas/CaptionOptions'
+        callback_url:
+          anyOf:
+          - format: uri
+            maxLength: 2083
+            minLength: 1
+            type: string
+          - type: 'null'
+          default: null
+          title: Callback Url
+        audio_url:
+          anyOf:
+          - format: uri
+            maxLength: 2083
+            minLength: 1
+            type: string
+          - type: 'null'
+          default: null
+          title: Audio Url
+        script:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: null
+          title: Script
+        scenes:
+          anyOf:
+          - items:
+              $ref: '#/components/schemas/InputScene'
+            maxItems: 200
+            type: array
+          - type: 'null'
+          default: null
+          title: Scenes
+      title: BrollJobRequest
+      type: object
+    BrollJobOptions:
+      additionalProperties: false
+      description: Everything except the primary input. Used as the multipart `options` field.
+      properties:
+        voice:
+          default: en-IN-female
+          maxLength: 64
+          title: Voice
+          type: string
+        language:
+          anyOf:
+          - maxLength: 16
+            type: string
+          - type: 'null'
+          default: null
+          description: BCP-47 hint, e.g. en, hi, ta. Auto-detected when null.
+          title: Language
+        aspect_ratios:
+          items:
+            type: string
+          maxItems: 3
+          minItems: 1
+          title: Aspect Ratios
+          type: array
+        style:
+          default: bright, modern, real-world footage
+          maxLength: 300
+          title: Style
+          type: string
+        avoid:
+          items:
+            type: string
+          maxItems: 20
+          title: Avoid
+          type: array
+        captions:
+          $ref: '#/components/schemas/CaptionOptions'
+        callback_url:
+          anyOf:
+          - format: uri
+            maxLength: 2083
+            minLength: 1
+            type: string
+          - type: 'null'
+          default: null
+          title: Callback Url
+      title: BrollJobOptions
+      type: object
