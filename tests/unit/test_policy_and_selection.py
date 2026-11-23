@@ -257,3 +257,23 @@ def test_music_only_detected_with_vad(tmp_path, monkeypatch):
     with pytest.raises(AppError) as ei:
         speech_check(p, 8)
     assert ei.value.code == ErrorCode.NO_SPEECH_DETECTED
+
+
+def test_hosted_planner_failure_falls_back_to_rules():
+    """A Gemini outage (e.g. 503 -> SCENE_PLANNING_FAILED) must not fail the job."""
+    from app.adapters.llm import plan_with_fallback
+    from app.adapters.llm.base import PlanRequest, SpanInfo
+    from app.core.errors import AppError, ErrorCode
+
+    class DownPlanner:
+        name, model = "gemini", "test"
+
+        def plan(self, req):
+            raise AppError(ErrorCode.SCENE_PLANNING_FAILED, details={"reason": "ServerError"})
+
+    req = PlanRequest(spans=[SpanInfo(0, "Cloud computing lets a small team rent servers.", 3.0),
+                             SpanInfo(1, "Sales grew 40% in 2025.", 2.5)],
+                      style="", avoid=[], language="en", target_scene_s=3.0, max_scene_s=8.0)
+    plan, used, reason = plan_with_fallback(DownPlanner(), req)
+    assert used.name == "rules" and reason == "ServerError"
+    assert sorted(i for sc in plan.scenes for i in sc.span_indices) == [0, 1]

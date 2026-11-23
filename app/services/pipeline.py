@@ -14,7 +14,7 @@ from pathlib import Path
 
 from app.adapters.embeddings import get_embedder
 from app.adapters.footage.base import ProviderError
-from app.adapters.llm import get_planner
+from app.adapters.llm import get_planner, plan_with_fallback
 from app.adapters.llm.base import PlanRequest, SpanInfo
 from app.adapters.vision import get_vision
 from app.adapters.vision.faces import get_face_detector
@@ -61,6 +61,7 @@ class Ctx:
         self.usage: dict[str, float] = {"tts_characters": 0, "llm_calls": 0, "image_generations": 0,
                                         "judge_calls": 0, "vision_calls": 0, "stock_searches": 0}
         self.t0 = time.perf_counter()
+        self.planner_fallback: str | None = None
 
     def progress(self, stage: str, pct: float) -> None:
         if repo.get_job(self.job_id).cancel_requested:
@@ -168,8 +169,12 @@ def plan_scenes(ctx: Ctx, transcript: Transcript) -> list[tuple[SceneSpan, Scene
                        language=transcript.language, target_scene_s=s.target_scene_s, max_scene_s=s.max_scene_s,
                        fixed_groups=[[i] for i in range(len(spans))] if fixed else None,
                        hints=[x.get("visual_hint") for x in req["scenes"]] if fixed else None)
-    plan = planner.plan(preq)
-    ctx.usage["llm_calls"] += 1 if planner.name != "rules" else 0
+    configured = planner.name
+    plan, planner, failure = plan_with_fallback(planner, preq)
+    ctx.usage["llm_calls"] += 1 if configured != "rules" else 0
+    if failure is not None:
+        ctx.planner_fallback = failure
+        ctx.warn("PLANNER_FALLBACK", f"{configured} scene planner failed ({failure}); used the rules planner instead")
     groups = [b.span_indices for b in plan.scenes]
     raw = build_scene_spans(transcript, spans, groups, fps)
     briefs = plan.scenes
@@ -284,7 +289,9 @@ def provider_block(ctx: Ctx, selector: FootageSelector | None, asr_meta: dict, t
     gen = selector.generated if selector else None
     return {
         "tts": tts_meta, "asr": asr_meta,
-        "scene_planner": {"name": planner.name, "model": planner.model},
+        "scene_planner": {"name": planner.name, "model": planner.model,
+                          **({"fallback_used": "rules", "fallback_reason": ctx.planner_fallback}
+                             if getattr(ctx, "planner_fallback", None) else {})},
         "embeddings": {"name": emb.name, "model": emb.model},
         "vision_scorer": {"name": vis.name, "model": vis.model} if vis else None,
         "face_detector": {"name": faces.name, "model": s.face_model_path} if faces else None,
