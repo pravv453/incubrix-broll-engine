@@ -9,6 +9,28 @@ licence-clean B-roll videos: one MP4 per requested aspect ratio (16:9, 9:16, 1:1
 Design rule: **models propose, code decides.** The LLM/rules planner only groups sentence indices and
 writes visual briefs. Deterministic Python owns timestamps, coverage, rights, uniqueness, safety and rendering.
 
+## Demo
+
+Local run (2026-11-23) with real Gemini narration (`gemini-3.8-flash-tts`), faster-whisper timing and the Gemini
+scene planner (`gemini-3.5-flash`). **Footage in these screenshots is the mock provider's synthetic clips**
+(no stock key was configured, and the key had no image-generation quota). The independent judge therefore
+rates them 1/5, as it should. The planner's visual briefs show the intended matches.
+
+**1. Submit a script.** Pick aspect ratios, style and avoid rules. The job runs in the background with live progress.
+
+![Demo page: script submission with live progress](docs/images/demo-submit.png)
+
+**2. Result.** One video per ratio with burned-in captions, plus download links and a scene table. Each scene
+shows its narration time range, the planner's visual brief (marked *illustrative* for statistics and abstract lines),
+the clip with its source, licence and AI-generated flag, the ranking score, the judge's score, and which
+selection rule fired (stock if score ≥ τ 0.55, else generated).
+
+![Demo result: 16:9 and 9:16 players and the scene table](docs/images/demo-result.png)
+
+**3. API.** OpenAPI 3.1 at `/docs`. Every route is under `/api/v1/`, plus `/health` and `/ready`.
+
+![OpenAPI docs](docs/images/api-docs.png)
+
 ## Architecture
 
 ```mermaid
