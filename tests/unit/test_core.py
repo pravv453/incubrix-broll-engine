@@ -131,3 +131,21 @@ def test_gemini_tts_decodes_wav_and_raw_pcm():
     assert rate == 24000 and len(pcm) == 480
     raw, rate2 = _decode(base64.b64encode(b"\x02\x00" * 10).decode())
     assert rate2 == 24000 and len(raw) == 20
+
+
+def test_ready_in_single_container_mode(monkeypatch, tmp_path):
+    """Inline runner + SQLite + local storage (the free-tier demo) must report ready without Redis."""
+    from app.api.routes import health
+    from app.core.config import get_settings
+
+    monkeypatch.setenv("JOB_RUNNER", "inline")
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path}/r.db")
+    monkeypatch.setenv("STORAGE_BACKEND", "local")
+    get_settings.cache_clear()
+    try:
+        checks = health.default_readiness_checks()
+        assert set(checks) == {"database", "storage"}
+        for check in checks.values():
+            check()
+    finally:
+        get_settings.cache_clear()

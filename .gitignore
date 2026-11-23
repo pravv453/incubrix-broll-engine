@@ -8,3 +8,4 @@ test-results/
 tests/scenarios/audio_hard/*.wav
 tests/scenarios/audio_hard/*.mp3
 tests/scenarios/audio_hard/*.txt
+deploy/.demo_token

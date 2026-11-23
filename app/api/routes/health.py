@@ -46,7 +46,8 @@ def default_readiness_checks() -> dict[str, ReadinessCheck]:
     def db() -> None:
         from sqlalchemy import create_engine, text
 
-        engine = create_engine(s.database_url, pool_pre_ping=True, connect_args={"connect_timeout": 3})
+        args = {} if s.database_url.startswith("sqlite") else {"connect_timeout": 3}
+        engine = create_engine(s.database_url, pool_pre_ping=True, connect_args=args)
         try:
             with engine.connect() as conn:
                 conn.execute(text("SELECT 1"))
@@ -65,4 +66,7 @@ def default_readiness_checks() -> dict[str, ReadinessCheck]:
         if isinstance(st, S3Storage):
             st.client.head_bucket(Bucket=st.bucket)
 
-    return {"database": db, "queue": queue, "storage": storage}
+    checks = {"database": db, "queue": queue, "storage": storage}
+    if s.job_runner == "inline":  # single-container mode: jobs run in-process, there is no broker to probe
+        checks.pop("queue")
+    return checks
