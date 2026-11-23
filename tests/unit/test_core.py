@@ -112,3 +112,22 @@ def test_request_defaults_and_kinds():
     assert r.captions.burn_in and r.captions.srt
     s = BrollJobRequest.model_validate({"scenes": [{"text": "A bank by the river", "visual_hint": "riverbank"}]})
     assert s.input_kind == "scenes"
+
+
+def test_gemini_tts_decodes_wav_and_raw_pcm():
+    import base64
+    import io
+    import wave
+
+    from app.adapters.tts.gemini_tts import _decode
+
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(24000)
+        w.writeframes(b"\x01\x00" * 240)
+    pcm, rate = _decode(base64.b64encode(buf.getvalue()).decode())
+    assert rate == 24000 and len(pcm) == 480
+    raw, rate2 = _decode(base64.b64encode(b"\x02\x00" * 10).decode())
+    assert rate2 == 24000 and len(raw) == 20

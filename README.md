@@ -64,7 +64,7 @@ Put these in `.env`, then run `docker compose up -d` again:
 ```dotenv
 GEMINI_API_KEY=...            # https://aistudio.google.com/apikey
 TTS_PROVIDER=gemini
-GEMINI_TTS_MODEL=...          # a current Gemini TTS model id from the live model list
+GEMINI_TTS_MODEL=...          # e.g. gemini-3.8-flash-tts (called via the Interactions API)
 LLM_PROVIDER=gemini
 GEMINI_TEXT_MODEL=...         # a current Gemini Flash model id
 GENERATED_PROVIDER=gemini
@@ -154,6 +154,7 @@ docker compose run --rm tests                 # everything, inside the image, no
 uv sync && uv run pytest                      # unit + integration + e2e
 uv run pytest tests/unit                      # fast
 uv run pytest -m e2e                          # real ffmpeg renders through the HTTP API
+LIVE_GEMINI_API_KEY=... uv run --group ml pytest tests/live   # opt-in: real Gemini calls (skipped without the key)
 ```
 
 The suite covers the following:
@@ -251,7 +252,23 @@ scripts/                    batch_runner.py, eval_relevance.py, export_openapi.p
 tests/                      unit/ integration/ e2e/ fixtures/ scenarios/
 ```
 
+## Deploy (live demo)
+
+A single Ubuntu VM (4 vCPU / 16 GB, ports 80 and 443 open) runs the same compose file plus Caddy for TLS.
+Only Caddy is exposed. The API needs `Authorization: Bearer <DEMO_ACCESS_TOKEN>`, and POSTs are rate-limited per client IP.
+
+```bash
+git clone <repo> broll && cd broll
+cp /path/to/your/.env .env                 # keys + providers (see "Real providers")
+bash deploy/setup_vm.sh                    # installs Docker, sets DEMO_DOMAIN=<ip>.sslip.io, a random token, starts the stack
+```
+
+The demo is at `https://<ip>.sslip.io/`, and download links are served from `https://files.<ip>.sslip.io/`.
+Files: [deploy/docker-compose.prod.yml](deploy/docker-compose.prod.yml), [deploy/Caddyfile](deploy/Caddyfile), [deploy/setup_vm.sh](deploy/setup_vm.sh).
+
 ## Troubleshooting
+
+- **Captions fail with `RENDER_FAILED` ... `ass` / `Invalid argument` (local runs).** Your `ffmpeg` has no libass (e.g. Homebrew's default build). Put a libass-enabled ffmpeg first on `PATH`. The Docker image is not affected.
 
 - **`/ready` returns 503.** `details.checks` names the dependency that is down. Run `docker compose ps` and `docker compose logs <service>`.
 - **The first job is slow.** Whisper, the embedding model and CLIP download on first use into the `models` volume. Later jobs are warm.

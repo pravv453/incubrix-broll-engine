@@ -1,0 +1,42 @@
+# Production overlay for a single VM:
+#   docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml up -d --build
+# Only Caddy is published (80/443). API and object store are reachable only through it.
+services:
+  caddy:
+    image: caddy:2.10-alpine   # Apache-2.0
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment:
+      DEMO_DOMAIN: ${DEMO_DOMAIN:?set DEMO_DOMAIN in .env}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    depends_on:
+      api: {condition: service_healthy}
+
+  api:
+    restart: unless-stopped
+    ports: !reset []
+    environment:
+      PUBLIC_BASE_URL: https://${DEMO_DOMAIN}
+      S3_PUBLIC_ENDPOINT: https://files.${DEMO_DOMAIN}
+      FORWARDED_ALLOW_IPS: "*"   # only Caddy can reach the API, so trust its X-Forwarded-For (rate limit per real client)
+      DEMO_ACCESS_TOKEN: ${DEMO_ACCESS_TOKEN:?set DEMO_ACCESS_TOKEN in .env}
+
+  worker:
+    restart: unless-stopped
+    environment:
+      PUBLIC_BASE_URL: https://${DEMO_DOMAIN}
+      S3_PUBLIC_ENDPOINT: https://files.${DEMO_DOMAIN}
+
+  objectstore:
+    restart: unless-stopped
+    ports: !reset []
+
+  postgres:
+    restart: unless-stopped
+  redis:
+    restart: unless-stopped
+
+volumes:
+  caddy_data:

@@ -1,5 +1,7 @@
-"""Gemini TTS via the official google-genai SDK. Returns 24 kHz 16-bit mono PCM,
-which we wrap into WAV. Long scripts are chunked at sentence boundaries."""
+"""Gemini TTS via the official google-genai SDK (Interactions API, v1beta).
+Each chunk returns a 24 kHz 16-bit mono WAV; we concatenate the PCM into one WAV.
+Long scripts are chunked at sentence boundaries."""
+import base64
 import io
 import logging
 import re
@@ -29,6 +31,17 @@ def _chunks(text: str) -> list[str]:
     return out
 
 
+def _decode(audio_b64: str | bytes) -> tuple[bytes, int]:
+    """Return (pcm16 mono, sample_rate) from a WAV or headerless L16 payload."""
+    data = base64.b64decode(audio_b64) if isinstance(audio_b64, str) else audio_b64
+    if data[:4] == b"RIFF":
+        with wave.open(io.BytesIO(data)) as w:
+            if w.getsampwidth() != 2 or w.getnchannels() != 1:
+                raise ValueError("unexpected TTS audio format")
+            return w.readframes(w.getnframes()), w.getframerate()
+    return data, 24000
+
+
 class GeminiTTS:
     name = "gemini"
 
@@ -37,36 +50,29 @@ class GeminiTTS:
         self.model = require_model(s.gemini_tts_model, "GEMINI_TTS_MODEL")
         self.voice_map = s.voice_map
 
-    def synthesize(self, text: str, voice: str, language: str | None, out_path: Path) -> dict:
-        from google.genai import types
+    def _call(self, client, chunk: str, voice_name: str):
+        return client.interactions.create(
+            model=self.model,
+            input=[{"type": "user_input", "content": [{"type": "text", "text": chunk}]}],
+            response_format={"type": "audio"},
+            generation_config={"speech_config": [{"voice": voice_name}]},
+        )
 
+    def synthesize(self, text: str, voice: str, language: str | None, out_path: Path) -> dict:
         voice_name = self.voice_map.get(voice, voice if voice[:1].isupper() else "Kore")
-        client = gemini_client()
+        client = gemini_client(api_version="v1beta")
         pcm = bytearray()
         rate = 24000
         for chunk in _chunks(text):
-            for attempt in range(3):
+            for attempt in range(4):
                 try:
-                    resp = client.models.generate_content(
-                        model=self.model,
-                        contents=chunk,
-                        config=types.GenerateContentConfig(
-                            response_modalities=["AUDIO"],
-                            speech_config=types.SpeechConfig(
-                                voice_config=types.VoiceConfig(
-                                    prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name=voice_name)
-                                )
-                            ),
-                        ),
-                    )
-                    part = resp.candidates[0].content.parts[0].inline_data
-                    m = re.search(r"rate=(\d+)", part.mime_type or "")
-                    rate = int(m.group(1)) if m else rate
-                    pcm.extend(part.data)
+                    it = self._call(client, chunk, voice_name)
+                    frames, rate = _decode(it.output_audio.data)
+                    pcm.extend(frames)
                     break
                 except Exception as exc:  # noqa: BLE001
                     log.warning("tts_chunk_failed", extra={"attempt": attempt, "error": type(exc).__name__})
-                    if attempt == 2:
+                    if attempt == 3:
                         raise AppError(ErrorCode.TTS_FAILED, details={"reason": type(exc).__name__}) from exc
                     time.sleep(2 ** attempt)
             pcm.extend(b"\x00\x00" * int(rate * 0.25))  # breath between chunks

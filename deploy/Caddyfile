@@ -1,0 +1,14 @@
+# Public demo: TLS (automatic, Let's Encrypt), API + demo page, and S3 download links.
+# DEMO_DOMAIN e.g. 34.12.56.78.sslip.io  (sslip.io maps the name to the IP, no DNS setup needed)
+{$DEMO_DOMAIN} {
+	encode gzip
+	request_body {
+		max_size 210MB
+	}
+	reverse_proxy api:8000
+}
+
+# Presigned download links are signed for this host; Caddy keeps the Host header so signatures verify.
+files.{$DEMO_DOMAIN} {
+	reverse_proxy objectstore:9000
+}
