@@ -11,3 +11,4 @@ tests/scenarios/audio_hard/*.txt
 deploy/.demo_token
 deploy/.hf_deploy_key
 deploy/.hf_deploy_key.pub
+deploy/.tunnel.log
